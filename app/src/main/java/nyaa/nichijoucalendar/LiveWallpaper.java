@@ -1,32 +1,19 @@
 package nyaa.nichijoucalendar;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.service.wallpaper.WallpaperService;
-import android.util.DisplayMetrics;
-import android.util.Log;
-import android.util.TypedValue;
 import android.view.SurfaceHolder;
 import android.view.View;
 
-import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiscCache;
-import com.nostra13.universalimageloader.cache.memory.impl.WeakMemoryCache;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
-import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
-import com.nostra13.universalimageloader.core.assist.ImageSize;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
-import com.nostra13.universalimageloader.utils.StorageUtils;
-
-import java.io.File;
 
 /**
  * Created by Oscar on 18/01/2015.
@@ -48,11 +35,10 @@ public class LiveWallpaper extends WallpaperService {
         private SurfaceHolder mSurfaceHolder;
         private int mWidth;
         private int mHeight;
+        private boolean mPortrait;
 
         private Paint mPaint;
         private Bitmap mImage;
-
-        private boolean mDirty;
 
         public LiveWallpaperEngine(Context context) {
             mContext = context;
@@ -64,28 +50,49 @@ public class LiveWallpaper extends WallpaperService {
 
             mHandler = new Handler();
             mPaint = new Paint();
-            mDirty = true;
 
-            loadImage();
+            requestDraw();
         }
 
-        private void loadImage() {
+        private void loadPlaceholderImage() {
+            ImageLoader imageLoader = ImageLoader.getInstance();
+            CanvasBitmapProcessor bitmapProcessor = new CanvasBitmapProcessor(mWidth, mHeight);
+            DisplayImageOptions opts = new DisplayImageOptions.Builder()
+                    .preProcessor(bitmapProcessor)
+                    .build();
+
+            String imageUrl = "assets://placeholder_1080.jpg";
+
+            imageLoader.loadImage(imageUrl, opts, new SimpleImageLoadingListener() {
+                @Override
+                public void onLoadingComplete(String imageUri, View view, Bitmap loadedImage) {
+                    if(mImage == null) {
+                        mImage = loadedImage;
+                        requestDraw();
+                    }
+                }
+            });
+        }
+
+        private void loadCalendarImage() {
+            if(mImage == null) { // display placeholder while image is loading
+                loadPlaceholderImage();
+            }
+
             String imageUrl = CalendarImageUrl.getUrl();
 
             ImageLoader imageLoader = ImageLoader.getInstance();
+            CanvasBitmapProcessor bitmapProcessor = new CanvasBitmapProcessor(mWidth, mHeight);
+            DisplayImageOptions opts = new DisplayImageOptions.Builder()
+                    .preProcessor(bitmapProcessor)
+                    .build();
 
-            ImageSize targetSize = new ImageSize(mWidth, mHeight);
-            imageLoader.loadImage(imageUrl, targetSize, new SimpleImageLoadingListener() {
-
+            imageLoader.loadImage(imageUrl, opts, new SimpleImageLoadingListener() {
                 @Override
                 public void onLoadingComplete(String imageUri, View view, Bitmap loadedImage) {
                     mImage = loadedImage;
-                    mDirty = true;
-
-                    Log.d("LWP", "Width: " + loadedImage.getWidth());
-                    Log.d("LWP", "Height: " + loadedImage.getHeight());
+                    requestDraw();
                 }
-
             });
         }
 
@@ -98,20 +105,19 @@ public class LiveWallpaper extends WallpaperService {
         public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
             mWidth = width;
             mHeight = height;
-            mDirty = true;
+            mPortrait = (mHeight > mWidth);
 
-            loadImage();
+            loadCalendarImage();
+            requestDraw();
         }
 
         @Override
         public void onVisibilityChanged(boolean visible) {
             mHandler.removeCallbacks(this);
 
-            mDirty = true;
-
             if(visible) {
-                loadImage();
-                mHandler.post(this);
+                loadCalendarImage();
+                requestDraw();
             }
         }
 
@@ -120,11 +126,9 @@ public class LiveWallpaper extends WallpaperService {
                 canvas.drawColor(Color.WHITE);
 
                 Rect src = new Rect(0, 0, mImage.getWidth(), mImage.getHeight());
-                Rect dst = new Rect(0, 0, mWidth, mHeight);
+                Rect dst = ImageUtils.canvasCenter(mImage.getWidth(), mImage.getHeight(), mWidth, mHeight);
 
                 canvas.drawBitmap(mImage, src, dst, mPaint);
-
-                mDirty = false;
             }
         }
 
@@ -141,14 +145,12 @@ public class LiveWallpaper extends WallpaperService {
                     }
                 }
             }
-
-            mHandler.postDelayed(this, 200);
         }
 
-        private float dipToPx(int dip) {
-            DisplayMetrics metrics = mContext.getResources().getDisplayMetrics();
-            return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dip, metrics);
+        private void requestDraw() {
+            mHandler.post(this);
         }
+
     }
 
 }

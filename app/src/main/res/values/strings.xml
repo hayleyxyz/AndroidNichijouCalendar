@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Nichijou Calendar</string>
+    <string name="wallpaper_description">Nichijou Calendar live wallpaper</string>
+    <string name="toast_failed">Failed to find a compatible  wallpaper chooser on your system.</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+
+</resources>

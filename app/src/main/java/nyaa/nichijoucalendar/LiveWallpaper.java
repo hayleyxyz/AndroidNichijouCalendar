@@ -116,7 +116,7 @@ public class LiveWallpaper extends WallpaperService {
         }
 
         private void draw(Canvas canvas) {
-            if(mImage != null && mDirty) {
+            if(mImage != null) {
                 canvas.drawColor(Color.WHITE);
 
                 Rect src = new Rect(0, 0, mImage.getWidth(), mImage.getHeight());
@@ -142,7 +142,7 @@ public class LiveWallpaper extends WallpaperService {
                 }
             }
 
-            mHandler.postDelayed(this, 22);
+            mHandler.postDelayed(this, 200);
         }
 
         private float dipToPx(int dip) {
